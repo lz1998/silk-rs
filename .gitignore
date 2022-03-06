@@ -5,8 +5,7 @@ Cargo.lock
 *.a
 silk/decoder
 test.sh
-test.mp3
-test.wav
-test.pcm
-output.silk
-out.pcm
+*.mp3
+*.wav
+*.silk
+*.pcm

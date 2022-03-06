@@ -5,8 +5,10 @@
 
 use libc::*;
 
+pub use decode::decode_silk;
 pub use encode::encode_silk;
 
+mod decode;
 mod encode;
 
 #[allow(dead_code)]
@@ -36,6 +38,7 @@ impl Drop for CMemory {
 
 #[cfg(test)]
 mod tests {
+    use crate::decode_silk;
     use crate::encode_silk;
 
     #[test]
@@ -43,5 +46,12 @@ mod tests {
         let input = std::fs::read("test.pcm").unwrap();
         let output = encode_silk(input, 24000, 24000, true).unwrap();
         std::fs::write("output.silk", output).unwrap();
+    }
+
+    #[test]
+    fn test_decode() {
+        let input = std::fs::read("output.silk").unwrap();
+        let output = decode_silk(input, 24000).unwrap();
+        std::fs::write("output.pcm", output).unwrap();
     }
 }
