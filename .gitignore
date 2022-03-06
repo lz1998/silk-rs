@@ -4,3 +4,9 @@ Cargo.lock
 *.o
 *.a
 silk/decoder
+test.sh
+test.mp3
+test.wav
+test.pcm
+output.silk
+out.pcm
