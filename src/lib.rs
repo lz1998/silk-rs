@@ -7,9 +7,11 @@ use libc::*;
 
 pub use decode::decode_silk;
 pub use encode::encode_silk;
+pub use error::SilkError;
 
 mod decode;
 mod encode;
+mod error;
 
 #[allow(dead_code)]
 pub(crate) mod sdk {

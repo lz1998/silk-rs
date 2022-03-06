@@ -1,13 +1,13 @@
 use bytes::{BufMut, BytesMut};
 
-use crate::{sdk, CMemory};
+use crate::{sdk, CMemory, SilkError};
 
 pub fn encode_silk(
     src: Vec<u8>,
     sample_rate: i32,
     bit_rate: i32,
     tencent: bool,
-) -> Result<Vec<u8>, ()> {
+) -> Result<Vec<u8>, SilkError> {
     unsafe { _encode_silk(src, sample_rate, bit_rate, tencent) }
 }
 
@@ -16,7 +16,7 @@ unsafe fn _encode_silk(
     sample_rate: i32,
     bit_rate: i32,
     tencent: bool,
-) -> Result<Vec<u8>, ()> {
+) -> Result<Vec<u8>, SilkError> {
     let mut enc_control = sdk::SKP_SILK_SDK_EncControlStruct {
         API_sampleRate: sample_rate,
         maxInternalSampleRate: 24000,
@@ -40,17 +40,18 @@ unsafe fn _encode_silk(
     };
 
     let mut enc_size_bytes: i32 = 0;
-    if sdk::SKP_Silk_SDK_Get_Encoder_Size(&mut enc_size_bytes) != 0 {
-        return Err(());
+    let code = sdk::SKP_Silk_SDK_Get_Encoder_Size(&mut enc_size_bytes);
+    if code != 0 {
+        return Err(SilkError::from(code));
     }
     let enc = CMemory::new(enc_size_bytes as usize);
 
-    if sdk::SKP_Silk_SDK_InitEncoder(
+    let code = sdk::SKP_Silk_SDK_InitEncoder(
         enc.ptr,
         &mut enc_status as *mut sdk::SKP_SILK_SDK_EncControlStruct,
-    ) != 0
-    {
-        return Err(());
+    );
+    if code != 0 {
+        return Err(SilkError::from(code));
     }
     let frame_size = sample_rate / 1000 * 40;
     let mut out = BytesMut::new();
@@ -66,7 +67,7 @@ unsafe fn _encode_silk(
         if chunk.len() < frame_size as usize {
             break;
         }
-        let ret = sdk::SKP_Silk_SDK_Encode(
+        let code = sdk::SKP_Silk_SDK_Encode(
             enc.ptr,
             &mut enc_control,
             chunk.as_ptr() as *const i16,
@@ -74,8 +75,8 @@ unsafe fn _encode_silk(
             payload.as_mut_ptr(),
             &mut n_bytes,
         );
-        if ret != 0 {
-            return Err(());
+        if code != 0 {
+            return Err(SilkError::from(code));
         }
         out.put_i16_le(n_bytes);
         let l = n_bytes as usize;
