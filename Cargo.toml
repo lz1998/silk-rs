@@ -2,8 +2,12 @@
 name = "silk-rs"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "Rust bindings for silk"
+keywords = ["silk", "pcm", "audio"]
+repository = "https://github.com/lz1998/silk-rs"
+homepage = "https://github.com/lz1998/silk-rs"
+readme = "README.md"
 
 [dependencies]
 bytes = "1"
