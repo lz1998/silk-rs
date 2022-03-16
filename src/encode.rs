@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
 
-use crate::{sdk, CMemory, SilkError};
+use crate::{sdk, SilkError};
 
 pub fn encode_silk(
     src: Vec<u8>,
@@ -44,10 +44,10 @@ unsafe fn _encode_silk(
     if code != 0 {
         return Err(SilkError::from(code));
     }
-    let enc = CMemory::new(enc_size_bytes as usize);
+    let mut enc = vec![0u8; enc_size_bytes as usize];
 
     let code = sdk::SKP_Silk_SDK_InitEncoder(
-        enc.ptr,
+        enc.as_mut_ptr() as *mut std::os::raw::c_void,
         &mut enc_status as *mut sdk::SKP_SILK_SDK_EncControlStruct,
     );
     if code != 0 {
@@ -68,7 +68,7 @@ unsafe fn _encode_silk(
             break;
         }
         let code = sdk::SKP_Silk_SDK_Encode(
-            enc.ptr,
+            enc.as_mut_ptr() as *mut std::os::raw::c_void,
             &mut enc_control,
             chunk.as_ptr() as *const i16,
             chunk.len() as i32 / 2,

@@ -1,6 +1,6 @@
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
-use crate::{sdk, CMemory, SilkError};
+use crate::{sdk, SilkError};
 
 pub fn decode_silk(src: Vec<u8>, sampleRate: i32) -> Result<Vec<u8>, SilkError> {
     unsafe { _decode_silk(src, sampleRate) }
@@ -27,8 +27,8 @@ unsafe fn _decode_silk(src: Vec<u8>, sample_rate: i32) -> Result<Vec<u8>, SilkEr
     if code != 0 {
         return Err(SilkError::from(code));
     }
-    let dec = CMemory::new(dec_size as usize);
-    let code = sdk::SKP_Silk_SDK_InitDecoder(dec.ptr);
+    let mut dec = vec![0u8; dec_size as usize];
+    let code = sdk::SKP_Silk_SDK_InitDecoder(dec.as_mut_ptr() as *mut std::os::raw::c_void);
     if code != 0 {
         return Err(SilkError::from(code));
     }
@@ -48,7 +48,7 @@ unsafe fn _decode_silk(src: Vec<u8>, sample_rate: i32) -> Result<Vec<u8>, SilkEr
         }
         let input = src.copy_to_bytes(n_bytes as usize);
         let code = sdk::SKP_Silk_SDK_Decode(
-            dec.ptr,
+            dec.as_mut_ptr() as *mut std::os::raw::c_void,
             &mut dec_control,
             0,
             input.as_ptr(),

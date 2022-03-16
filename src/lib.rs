@@ -3,8 +3,6 @@
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
 
-use libc::*;
-
 pub use decode::decode_silk;
 pub use encode::encode_silk;
 pub use error::SilkError;
@@ -16,26 +14,6 @@ mod error;
 #[allow(dead_code)]
 pub(crate) mod sdk {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
-
-pub(crate) struct CMemory {
-    ptr: *mut c_void,
-}
-
-impl CMemory {
-    pub(crate) fn new(size: usize) -> Self {
-        Self {
-            ptr: unsafe { malloc(size) },
-        }
-    }
-}
-
-impl Drop for CMemory {
-    fn drop(&mut self) {
-        unsafe {
-            free(self.ptr);
-        }
-    }
 }
 
 #[cfg(test)]
