@@ -1,6 +1,6 @@
 [package]
 name = "silk-rs"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Rust bindings for silk"
@@ -11,8 +11,8 @@ readme = "README.md"
 
 [dependencies]
 bytes = "1"
-thiserror = "1.0"
+thiserror = "1"
 
 [build-dependencies]
-bindgen = "0.53.1"
-cc = "1.0"
+bindgen = "0.59"
+cc = "1"

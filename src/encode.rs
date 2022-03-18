@@ -1,23 +1,25 @@
-use bytes::{BufMut, BytesMut};
+use std::ffi::c_void;
 
-use crate::{sdk, SilkError};
+use bytes::BufMut;
+
+use crate::{fast_check, sdk, SilkError};
 
 pub fn encode_silk(
-    src: Vec<u8>,
+    src: impl AsRef<[u8]>,
     sample_rate: i32,
     bit_rate: i32,
     tencent: bool,
 ) -> Result<Vec<u8>, SilkError> {
-    unsafe { _encode_silk(src, sample_rate, bit_rate, tencent) }
+    unsafe { _encode_silk(src.as_ref(), sample_rate, bit_rate, tencent) }
 }
 
 unsafe fn _encode_silk(
-    src: Vec<u8>,
+    src: &[u8],
     sample_rate: i32,
     bit_rate: i32,
     tencent: bool,
 ) -> Result<Vec<u8>, SilkError> {
-    let mut enc_control = sdk::SKP_SILK_SDK_EncControlStruct {
+    let enc_control = sdk::SKP_SILK_SDK_EncControlStruct {
         API_sampleRate: sample_rate,
         maxInternalSampleRate: 24000,
         packetSize: (20 * sample_rate) / 1000,
@@ -39,49 +41,41 @@ unsafe fn _encode_silk(
         useDTX: 0,
     };
 
-    let mut enc_size_bytes: i32 = 0;
-    let code = sdk::SKP_Silk_SDK_Get_Encoder_Size(&mut enc_size_bytes);
-    if code != 0 {
-        return Err(SilkError::from(code));
-    }
-    let mut enc = vec![0u8; enc_size_bytes as usize];
+    let mut encoder_size = 0;
+    fast_check!(sdk::SKP_Silk_SDK_Get_Encoder_Size(&mut encoder_size));
 
-    let code = sdk::SKP_Silk_SDK_InitEncoder(
-        enc.as_mut_ptr() as *mut std::os::raw::c_void,
-        &mut enc_status as *mut sdk::SKP_SILK_SDK_EncControlStruct,
-    );
-    if code != 0 {
-        return Err(SilkError::from(code));
-    }
-    let frame_size = sample_rate / 1000 * 40;
-    let mut out = BytesMut::new();
+    let mut encoder = vec![0u8; encoder_size as usize];
+
+    fast_check!(sdk::SKP_Silk_SDK_InitEncoder(
+        encoder.as_mut_ptr() as *mut c_void,
+        &mut enc_status,
+    ));
+
+    let mut result = vec![];
     if tencent {
-        out.put_slice("\x02#!SILK_V3".as_bytes())
-    } else {
-        out.put_slice("#!SILK_V3".as_bytes())
+        result.put_u8(b'\x02');
     }
-    let mut n_bytes: i16 = 1250;
-    let mut payload = vec![0; n_bytes as usize];
-    for chunk in src.chunks(frame_size as usize) {
-        n_bytes = 1250;
-        if chunk.len() < frame_size as usize {
+    result.extend_from_slice(b"#!SILK_V3");
+
+    let frame_size = sample_rate as usize / 1000 * 40;
+    let mut output_size = 1250i16;
+    let mut buf = vec![0u8; output_size as usize];
+    for chunk in src.chunks(frame_size) {
+        output_size = 1250;
+        if chunk.len() < frame_size {
             break;
         }
-        let code = sdk::SKP_Silk_SDK_Encode(
-            enc.as_mut_ptr() as *mut std::os::raw::c_void,
-            &mut enc_control,
+        fast_check!(sdk::SKP_Silk_SDK_Encode(
+            encoder.as_mut_ptr() as *mut c_void,
+            &enc_control,
             chunk.as_ptr() as *const i16,
             chunk.len() as i32 / 2,
-            payload.as_mut_ptr(),
-            &mut n_bytes,
-        );
-        if code != 0 {
-            return Err(SilkError::from(code));
-        }
-        out.put_i16_le(n_bytes);
-        let l = n_bytes as usize;
-        out.put_slice(&payload[0..l]);
+            buf.as_mut_ptr(),
+            &mut output_size,
+        ));
+        result.put_i16_le(output_size);
+        result.extend_from_slice(&buf[0..output_size as usize]);
     }
 
-    Ok(out.to_vec())
+    Ok(result)
 }
